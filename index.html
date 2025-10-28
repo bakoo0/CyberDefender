@@ -46,6 +46,8 @@
     .muted { color: #6b7280; }
     .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
     footer { margin-top: 10px; font-size: 14px; opacity: .9; text-align: center; }
+
+    #tipsOverlay ul { text-align: left; }
   </style>
 </head>
 <body>
@@ -82,11 +84,27 @@
           </div>
         </div>
       </div>
+
+      <div id="tipsOverlay" class="overlay" style="display:none">
+        <div class="card grid">
+          <h2>💡 Интернеттегі қауіпсіздік кеңестері</h2>
+          <ul>
+            <li>Жеке деректеріңді бөтен адамдарға берме.</li>
+            <li>Қорлайтын хабарламаларға жауап берме.</li>
+            <li>Қауіп төнсе, мұғалімге немесе ата-анаңа айт.</li>
+            <li>Күдікті сілтемелерді ашпа және белгісіз файлдарды жүктеме.</li>
+            <li>Интернетте де сыпайы бол.</li>
+          </ul>
+          <button id="btnBackToStart" class="btn">Артқа қайту 🔙</button>
+        </div>
+      </div>
+
       <div id="endOverlay" class="overlay" style="display:none">
         <div class="card grid">
           <h2 id="endTitle">Ойын аяқталды</h2>
           <div id="summary"></div>
           <div class="row">
+            <button id="btnTips" class="btn">Кеңестер 💡</button>
             <button id="btnAgain" class="btn">Қайта ойнау 🔁</button>
           </div>
         </div>
@@ -101,176 +119,20 @@
   <audio id="bgMusic" src="music.mp3" loop autoplay></audio>
 
   <script>
-    const translations = {
-      kk: {
-        description: 'Бұл ойын арқылы сен интернеттегі дөрекі хабарламаларды тануға үйренесің.',
-        startTitle: 'Бастауға дайынсың ба?', startText: 'Мақсат – дөрекі және қорлайтын хабарламаларды басу, ал жақсысын қалдыру.', endTitle: 'Ойын аяқталды',
-        startButton: 'Ойынды бастау ▶', restart: 'Қайта ойнау 🔁', pause: 'Үзіліс ⏸', score: 'Ұпай', lives: 'Өмір', level: 'Деңгей', best: 'Рекорд',
-        pool: [
-          { text: 'Сен өте жақсы доссың', bad: false },
-          { text: 'Жарайсың', bad: false },
-          { text: 'Көмегің үшін рақмет', bad: false },
-          { text: 'Өмірде бәрі жақсы болады', bad: false },
-          { text: 'Сен ақымақсың', bad: true },
-          { text: 'Ешкімге керексізсің', bad: true },
-          { text: 'Аккаунтыңды өшір', bad: true },
-          { text: 'Сенің суретің қорқынышты', bad: true },
-          { text: 'Сенің пікірің маған ұнайды', bad: false },
-          { text: 'Сен мықтысың', bad: false },
-          { text: 'Саған ешкім сенбейді', bad: true },
-          { text: 'Бәрі саған риза', bad: false },
-          { text: 'Сенің идеяң керемет', bad: false },
-          { text: 'Сенің постың нашар', bad: true }
-        ]
-      },
-      ru: {
-        description: 'Эта игра поможет тебе распознавать грубые и добрые сообщения.',
-        startTitle: 'Готов начать?', startText: 'Цель — нажимай на оскорбительные и угрожающие сообщения, оставляй хорошие.', endTitle: 'Игра окончена',
-        startButton: 'Начать игру ▶', restart: 'Играть снова 🔁', pause: 'Пауза ⏸', score: 'Очки', lives: 'Жизни', level: 'Уровень', best: 'Рекорд',
-        pool: [
-          { text: 'Ты очень хороший друг', bad: false },
-          { text: 'Молодец', bad: false },
-          { text: 'Спасибо за помощь', bad: false },
-          { text: 'У тебя всё получится', bad: false },
-          { text: 'Ты глупый', bad: true },
-          { text: 'Никому не нужен', bad: true },
-          { text: 'Удаляй аккаунт', bad: true },
-          { text: 'Твоё фото ужасное', bad: true },
-          { text: 'Мне нравится твоё мнение', bad: false },
-          { text: 'Ты сильный', bad: false },
-          { text: 'Тебе никто не верит', bad: true },
-          { text: 'Все тобой довольны', bad: false },
-          { text: 'Твоя идея отличная', bad: false },
-          { text: 'Твой пост плохой', bad: true }
-        ]
-      }
-    };
-
-    let currentLang = 'kk';
-    let playerName = localStorage.getItem('cd_name') || prompt('Атыңды енгіз:');
-    localStorage.setItem('cd_name', playerName);
-
     const stage = document.getElementById('stage');
-    const scoreEl = document.getElementById('score');
-    const livesEl = document.getElementById('lives');
-    const levelEl = document.getElementById('level');
-    const bestEl = document.getElementById('best');
     const startOverlay = document.getElementById('startOverlay');
     const endOverlay = document.getElementById('endOverlay');
-    const summaryEl = document.getElementById('summary');
-    const clickSound = document.getElementById('clickSound');
-    const wrongSound = document.getElementById('wrongSound');
+    const tipsOverlay = document.getElementById('tipsOverlay');
 
-    let score = 0, lives = 5, level = 1, best = localStorage.getItem('cd_best') || 0;
-    let spawnTimer = null, paused = false, running = false;
-    bestEl.textContent = `Рекорд: ${best}`;
-
-    function setLang(lang) {
-      currentLang = lang;
-      const t = translations[lang];
-      document.getElementById('description').innerText = t.description;
-      document.getElementById('startTitle').innerText = t.startTitle;
-      document.getElementById('startText').innerText = t.startText;
-      document.getElementById('endTitle').innerText = t.endTitle;
-      document.getElementById('btnStart').innerText = t.startButton;
-      document.getElementById('btnAgain').innerText = t.restart;
-      document.getElementById('btnRestart').innerText = t.restart;
-      document.getElementById('btnPause').innerText = t.pause;
-      updateUI();
-    }
-
-    function rnd(min, max) { return Math.random() * (max - min) + min; }
-    function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-    function getDifficulty(level) {
-      const speed = Math.min(7, 5 + level * 0.3);
-      const rate = Math.max(700, 1500 - level * 30);
-      const badChance = Math.min(.7, .3 + level * 0.03);
-      return { speed, rate, badChance };
-    }
-
-    function updateUI() {
-      const t = translations[currentLang];
-      scoreEl.textContent = `${t.score}: ${score}`;
-      livesEl.textContent = `${t.lives}: ${lives}`;
-      levelEl.textContent = `${t.level}: ${level}`;
-      bestEl.textContent = `${t.best}: ${best}`;
-    }
-
-    function spawnMessage() {
-      const { speed, badChance } = getDifficulty(level);
-      const t = translations[currentLang];
-      const pool = t.pool;
-      const isBad = Math.random() < badChance;
-      const item = choice(pool.filter(p => p.bad === isBad));
-      const el = document.createElement('div');
-      el.className = 'msg';
-      el.textContent = item.text;
-      el.style.left = `${rnd(10, stage.clientWidth - 200)}px`;
-      el.style.animationDuration = `${rnd(speed - 0.3, speed + 1).toFixed(2)}s`;
-
-      el.addEventListener('click', () => {
-        if (isBad) { clickSound.play(); score++; if (score % 10 === 0) level++; }
-        else { wrongSound.play(); lives--; }
-        el.remove();
-        if (lives <= 0) endGame(); else updateUI();
-      });
-
-      el.addEventListener('animationend', () => {
-        if (isBad) { lives--; if (lives <= 0) endGame(); }
-        el.remove(); updateUI();
-      });
-      stage.appendChild(el);
-    }
-
-    function startGame() {
-      score = 0; lives = 5; level = 1; paused = false; running = true;
-      stage.querySelectorAll('.msg').forEach(m => m.remove());
-      startOverlay.style.display = 'none';
+    document.getElementById('btnTips').addEventListener('click', () => {
       endOverlay.style.display = 'none';
-      updateUI();
-      scheduleSpawn();
-    }
+      tipsOverlay.style.display = 'flex';
+    });
 
-    function scheduleSpawn() {
-      clearInterval(spawnTimer);
-      const { rate } = getDifficulty(level);
-      spawnTimer = setInterval(() => { if (!paused) spawnMessage(); }, rate);
-    }
-
-    function saveResult() {
-      let results = JSON.parse(localStorage.getItem('cd_results')) || [];
-      results.push({ name: playerName, score: score, level: level, date: new Date().toLocaleString() });
-      results = results.slice(-5); // сохраняем последние 5 игр
-      localStorage.setItem('cd_results', JSON.stringify(results));
-    }
-
-    function showResults() {
-      let results = JSON.parse(localStorage.getItem('cd_results')) || [];
-      let html = '<h3>Соңғы нәтижелер:</h3><ul style=\"text-align:left\">';
-      results.forEach(r => {
-        html += `<li>${r.name}: ${r.score} ұпай (деңгей ${r.level}) — ${r.date}</li>`;
-      });
-      html += '</ul>';
-      return html;
-    }
-
-    function endGame() {
-      running = false; clearInterval(spawnTimer);
-      if (score > best) { best = score; localStorage.setItem('cd_best', best); }
-      saveResult();
-      updateUI();
-      summaryEl.innerHTML = `Сіздің ұпайыңыз: <b>${score}</b> | Деңгей: <b>${level}</b><br><br>${showResults()}`;
-      endOverlay.style.display = 'flex';
-    }
-
-    document.getElementById('btnStart').addEventListener('click', startGame);
-    document.getElementById('btnAgain').addEventListener('click', startGame);
-    document.getElementById('btnRestart').addEventListener('click', startGame);
-    document.getElementById('btnPause').addEventListener('click', () => { paused = !paused; });
-
-    setLang('kk');
-    updateUI();
+    document.getElementById('btnBackToStart').addEventListener('click', () => {
+      tipsOverlay.style.display = 'none';
+      startOverlay.style.display = 'flex';
+    });
   </script>
 </body>
 </html>
